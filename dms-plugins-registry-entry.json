@@ -1,0 +1,20 @@
+{
+    "id": "pullWindow",
+    "name": "Pull Window",
+    "capabilities": [
+        "window-management"
+    ],
+    "category": "utilities",
+    "repo": "https://github.com/ReyArlena/dux-pull-window",
+    "author": "ReyArlena",
+    "description": "Launcher plugin: type :pw and part of a window title or app name to pull that window onto the workspace you are on - the opposite of SUPER + SHIFT + number. Useful for moving windows onto a virtual or headless output.",
+    "dependencies": [
+        "jq"
+    ],
+    "compositors": [
+        "hyprland"
+    ],
+    "distro": [
+        "any"
+    ]
+}

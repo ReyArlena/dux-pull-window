@@ -1,0 +1,27 @@
+{
+    "id": "pullWindow",
+    "name": "Pull Window",
+    "description": "Launcher search over open windows that pulls the chosen one onto your current workspace",
+    "version": "0.1.0",
+    "license": "MIT",
+    "author": "ReyArlena",
+    "icon": "move_down",
+    "type": "launcher",
+    "capabilities": [
+        "window-management"
+    ],
+    "component": "./PullWindow.qml",
+    "settings": "./PullWindowSettings.qml",
+    "startupCheck": "./StartupCheck.qml",
+    "trigger": ":pw",
+    "requires_dms": ">=2.0.0",
+    "requires": [
+        "hyprland",
+        "jq"
+    ],
+    "permissions": [
+        "settings_read",
+        "settings_write",
+        "process"
+    ]
+}
