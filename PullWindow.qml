@@ -1,33 +1,53 @@
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import qs.Common
 import qs.Services
 
 // Launcher plugin: lists open windows and pulls the chosen one onto the workspace you are on.
 // The opposite of moving the active window away with SUPER + SHIFT + <n>.
+//
+// This file is the compositor-neutral core: search, ranking, most-recently-used order, launcher
+// items. Each compositor has a backend (HyprlandBackend.qml) that lists windows
+// with the compositor's own ids and moves them; see `backend` below for the interface.
 QtObject {
     id: root
 
     readonly property string pluginKey: "pullWindow"
     readonly property int maxResults: 50
-    // The window list is kept current from Hyprland events, so it is ready when the launcher opens.
-    // The TTL is a fallback in case an event was missed, without running hyprctl on every keystroke.
+    // Backends report changes as they happen, so the list is ready when the launcher opens.
+    // The TTL is a fallback in case an event was missed, without a refresh on every keystroke.
     readonly property int cacheTtlMs: 1000
-    // Hyprland events that change the list or its order.
-    readonly property var watchedEvents: ["openwindow", "closewindow", "windowtitle", "windowtitlev2", "activewindow", "activewindowv2", "minimized"]
 
     property var pluginService: null
     property string trigger: ":pw"
 
-    // [{ address, title, cls, focusHistoryID }]
+    // Backend interface:
+    //   signal updated                      the window list or the focused window changed
+    //   refresh(done)                       done([{ id, title, appId }], focusedId), or done(null)
+    //   pull(id, done)                      done(null) on success, done("reason") on failure
+    property var backend: null
+
+    // [{ id, title, appId }], most recently used first.
     property var windows: []
+    // Window ids, most recently used first. Kept across refreshes; a backend's own order only
+    // places windows the core has not seen yet (all of them on the first refresh).
+    property var recent: []
     property double refreshedAt: 0
     property bool refreshing: false
 
     signal itemsChanged
 
-    Component.onCompleted: loadSettings()
+    // The launcher does not listen to itemsChanged; requestLauncherUpdate is what makes it
+    // re-query, so results that arrive after the launcher opened show up straight away.
+    onItemsChanged: {
+        if (pluginService && typeof pluginService.requestLauncherUpdate === "function")
+            pluginService.requestLauncherUpdate(pluginKey);
+    }
+
+    Component.onCompleted: {
+        loadSettings();
+        createBackend();
+    }
 
     onPluginServiceChanged: {
         if (!pluginService)
@@ -37,12 +57,12 @@ QtObject {
         refresh();
     }
 
-    property var hyprlandEventsConnection: Connections {
-        target: Hyprland
+    property var backendConnection: Connections {
+        target: root.backend
+        enabled: root.backend !== null
 
-        function onRawEvent(event) {
-            if (root.watchedEvents.indexOf(event.name) >= 0)
-                root.refresh();
+        function onUpdated() {
+            root.refresh();
         }
     }
 
@@ -63,32 +83,52 @@ QtObject {
         trigger = (pluginService.loadPluginData(pluginKey, "trigger", ":pw") || "").trim() || ":pw";
     }
 
-    // Calls within the debounce window (a burst of events) collapse into one run.
+    // Loaded by file, so only the running compositor's backend (and its Quickshell module) loads.
+    function createBackend() {
+        if (backend)
+            return;
+        const file = CompositorService.isHyprland ? "HyprlandBackend.qml" : "";
+        if (!file)
+            return;
+        const component = Qt.createComponent(Qt.resolvedUrl(file));
+        if (component.status !== Component.Ready) {
+            console.error("Pull Window: could not load " + file + ": " + component.errorString());
+            return;
+        }
+        backend = component.createObject(root);
+    }
+
     function refresh() {
+        if (!backend)
+            return;
         refreshing = true;
-        Proc.runCommand("pullWindow.refresh", ["hyprctl", "clients", "-j"], (stdout, exitCode) => {
+        backend.refresh((list, focusedId) => {
             refreshing = false;
-            if (exitCode !== 0)
-                return;
-            let clients = [];
-            try {
-                clients = JSON.parse(stdout || "[]");
-            } catch (e) {
-                return;
-            }
-            windows = clients.filter(c => c.mapped && !c.hidden && c.address).map(c => ({
-                        address: c.address,
-                        title: c.title || c.initialTitle || c.class || "",
-                        cls: c.class || c.initialClass || "",
-                        focusHistoryID: typeof c.focusHistoryID === "number" ? c.focusHistoryID : 9999
-                    })).sort((a, b) => a.focusHistoryID - b.focusHistoryID);
-            refreshedAt = Date.now();
-            itemsChanged();
-            // The launcher does not listen to itemsChanged; this is what makes it re-query, so the
-            // first open (empty cache) fills in once hyprctl returns.
-            if (pluginService && typeof pluginService.requestLauncherUpdate === "function")
-                pluginService.requestLauncherUpdate(pluginKey);
-        }, 50, 5000);
+            if (list)
+                applyList(list, focusedId);
+        });
+    }
+
+    function applyList(list, focusedId) {
+        const byId = {};
+        for (let i = 0; i < list.length; i++)
+            byId[list[i].id] = list[i];
+        // Closed windows drop out; new ones go after the known ones, in the backend's order.
+        let order = recent.filter(id => byId[id] !== undefined);
+        const known = {};
+        for (let i = 0; i < order.length; i++)
+            known[order[i]] = true;
+        for (let i = 0; i < list.length; i++) {
+            if (!known[list[i].id])
+                order.push(list[i].id);
+        }
+        // The focused window is the most recent.
+        if (focusedId && byId[focusedId] !== undefined)
+            order = [focusedId].concat(order.filter(id => id !== focusedId));
+        recent = order;
+        windows = order.map(id => byId[id]);
+        refreshedAt = Date.now();
+        itemsChanged();
     }
 
     function isWordStart(lower, idx) {
@@ -137,8 +177,8 @@ QtObject {
         return Math.max(1, total * 10 - lower.length);
     }
 
-    function iconFor(cls) {
-        const entry = cls ? DesktopEntries.heuristicLookup(cls) : null;
+    function iconFor(appId) {
+        const entry = appId ? DesktopEntries.heuristicLookup(appId) : null;
         return entry && entry.icon ? "image:" + entry.icon : "material:web_asset";
     }
 
@@ -150,8 +190,8 @@ QtObject {
         const matches = [];
         for (let i = 0; i < windows.length; i++) {
             const w = windows[i];
-            // Class first so "firefox" or "ghostty" finds every window of that app.
-            const s = Math.max(score(w.cls + " " + w.title, search), score(w.title, search));
+            // App id first so "firefox" or "ghostty" finds every window of that app.
+            const s = Math.max(score(w.appId + " " + w.title, search), score(w.title, search));
             if (s > 0)
                 matches.push({ w: w, score: s, order: i });
         }
@@ -164,9 +204,9 @@ QtObject {
             const w = matches[i].w;
             items.push({
                 name: w.title,
-                comment: w.cls,
-                action: "pull:" + w.address,
-                icon: iconFor(w.cls),
+                comment: w.appId,
+                action: "pull:" + w.id,
+                icon: iconFor(w.appId),
                 categories: ["Pull Window"],
                 // Stops the launcher re-scoring against the full query and dropping results.
                 _preScored: 1000 - i
@@ -176,25 +216,15 @@ QtObject {
     }
 
     function executeItem(item) {
-        if (!item || !item.action || item.action.indexOf("pull:") !== 0)
+        if (!backend || !item || !item.action || item.action.indexOf("pull:") !== 0)
             return;
-        const address = item.action.substring(5);
-        if (!/^0x[0-9a-f]+$/i.test(address))
+        const id = item.action.substring(5);
+        // Only ids the backend listed; the backend checks their format again.
+        if (!windows.some(w => w.id === id))
             return;
-        // Target: the active workspace on the focused monitor, or its open special workspace.
-        const script = 'ws=$(hyprctl monitors -j | jq -r \'.[] | select(.focused) | if .specialWorkspace.name != "" then .specialWorkspace.name else (.activeWorkspace.id | tostring) end\')\n'
-            + '[ -n "$ws" ] || exit 1\n'
-            + '[ "$(hyprctl dispatch "hl.dsp.window.move({ workspace = \\"$ws\\", follow = false, window = \\"address:$1\\" })")" = ok ] || exit 2\n'
-            + '[ "$(hyprctl dispatch "hl.dsp.focus({ window = \\"address:$1\\" })")" = ok ] || exit 3';
-        Proc.runCommand("pullWindow.pull", ["sh", "-c", script, "_", address], (stdout, exitCode) => {
-            const errors = {
-                1: "could not find the focused workspace",
-                2: "Hyprland refused to move the window",
-                3: "moved the window but could not focus it",
-                124: "Hyprland did not respond"
-            };
-            if (exitCode !== 0)
-                ToastService.showError("Pull Window: " + (errors[exitCode] || "failed (exit " + exitCode + ")"));
-        }, 0, 5000);
+        backend.pull(id, error => {
+            if (error)
+                ToastService.showError("Pull Window: " + error);
+        });
     }
 }
