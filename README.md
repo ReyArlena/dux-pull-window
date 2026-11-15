@@ -1,5 +1,9 @@
 # Dux Shell Plugin: Pull Window
 
+> This plugin has been tested on Sway, MangoWC and niri, but Hyprland is my daily driver. If you run
+> into any problems or have feedback, please
+> [open an issue](https://github.com/ReyArlena/dux-pull-window/issues).
+
 [Dux Shell](https://github.com/duxlabs-dev/dux-shell) launcher plugin that finds an open window and
 pulls it onto the workspace you are on, on Hyprland, Sway, MangoWC or niri. The opposite of sending
 the active window away with SUPER + SHIFT + number.
