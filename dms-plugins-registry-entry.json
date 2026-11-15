@@ -14,6 +14,7 @@
     "compositors": [
         "hyprland",
         "sway",
+        "scroll",
         "mangowc",
         "niri"
     ],

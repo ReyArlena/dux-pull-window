@@ -3,11 +3,15 @@ import Quickshell
 import Quickshell.I3
 import qs.Common
 
-// Sway backend. Windows come from Sway's own tree, so every window has its exact con_id, and
-// a window is moved by that id: no workspace is ever switched to, which matters for windows
-// on headless outputs whose workspaces are never shown.
+// Sway backend, also used for Scroll (a Sway fork with the same IPC; it sets SWAYSOCK and
+// I3SOCK too). Windows come from the compositor's own tree, so every window has its exact
+// con_id, and a window is moved by that id: no workspace is ever switched to, which matters for
+// windows on headless outputs whose workspaces are never shown.
 QtObject {
     id: root
+
+    // The IPC client: swaymsg, or scrollmsg on Scroll (whose users may not have Sway).
+    property string msg: "swaymsg"
 
     // The window list or the focused window changed.
     signal updated
@@ -39,7 +43,7 @@ QtObject {
 
     // done([{ id, title, appId }], focusedId) or done(null) when Sway could not be read.
     function refresh(done) {
-        Proc.runCommand("pullWindow.sway.tree", ["swaymsg", "-t", "get_tree", "-r"], (stdout, exitCode) => {
+        Proc.runCommand("pullWindow.sway.tree", [root.msg, "-t", "get_tree", "-r"], (stdout, exitCode) => {
             if (exitCode !== 0) {
                 done(null, "");
                 return;
@@ -81,20 +85,20 @@ QtObject {
         }
         const name = ws.name.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
         const command = "[con_id=" + id + "] move container to workspace \"" + name + "\"; [con_id=" + id + "] focus";
-        Proc.runCommand("pullWindow.sway.pull", ["swaymsg", "-r", command], (stdout, exitCode) => {
+        Proc.runCommand("pullWindow.sway.pull", [root.msg, "-r", command], (stdout, exitCode) => {
             if (exitCode === 124) {
-                done("Sway did not respond");
+                done("the compositor did not respond");
                 return;
             }
             let results;
             try {
                 results = JSON.parse(stdout || "");
             } catch (e) {
-                done("Sway refused to move the window");
+                done("the compositor refused to move the window");
                 return;
             }
             const failed = results.find(r => !r.success);
-            done(failed ? "Sway refused: " + (failed.error || "unknown error") : null);
+            done(failed ? "the compositor refused: " + (failed.error || "unknown error") : null);
         }, 0, 5000);
     }
 }

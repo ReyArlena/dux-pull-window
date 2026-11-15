@@ -5,7 +5,7 @@ import qs.Services
 // Runs once when the plugin is enabled: checks the running compositor is supported and has
 // what its backend uses.
 //   Hyprland: hyprctl (0.55+ for the Lua dispatcher syntax), and jq to read the focused workspace.
-//   Sway: swaymsg and a reachable Sway socket.
+//   Sway / Scroll: swaymsg / scrollmsg and a reachable socket.
 //   MangoWC: mmsg and a reachable Mango socket.
 //   niri: niri msg and a reachable niri socket.
 QtObject {
@@ -15,7 +15,9 @@ QtObject {
         if (CompositorService.isHyprland)
             checkHyprland(done);
         else if (CompositorService.isSway)
-            checkSway(done);
+            checkSway(done, "swaymsg", "Sway");
+        else if (CompositorService.isScroll)
+            checkSway(done, "scrollmsg", "Scroll");
         else if (CompositorService.isMango)
             checkMango(done);
         else if (CompositorService.isNiri)
@@ -23,7 +25,7 @@ QtObject {
         else
             done({
                 title: "Compositor not supported",
-                details: "Pull Window works on Hyprland, Sway, MangoWC and niri."
+                details: "Pull Window works on Hyprland, Sway, Scroll, MangoWC and niri."
             });
     }
 
@@ -54,17 +56,17 @@ QtObject {
         });
     }
 
-    function checkSway(done) {
-        const script = "command -v swaymsg >/dev/null 2>&1 || exit 1\n"
-            + "swaymsg -t get_version >/dev/null 2>&1 || exit 2";
-        Proc.runCommand("pullWindow.startupCheck", ["sh", "-c", script], (stdout, exitCode) => {
+    function checkSway(done, msg, name) {
+        const script = "command -v \"$1\" >/dev/null 2>&1 || exit 1\n"
+            + "\"$1\" -t get_version >/dev/null 2>&1 || exit 2";
+        Proc.runCommand("pullWindow.startupCheck", ["sh", "-c", script, "_", msg], (stdout, exitCode) => {
             if (exitCode === 0) {
                 done(null);
                 return;
             }
             const messages = {
-                1: ["swaymsg not found", "Pull Window needs Sway's swaymsg."],
-                2: ["Sway socket not reachable", "swaymsg could not talk to Sway (is SWAYSOCK set in Dux Shell's environment?)."]
+                1: [msg + " not found", "Pull Window needs " + name + "'s " + msg + "."],
+                2: [name + " socket not reachable", msg + " could not talk to " + name + " (is SWAYSOCK set in Dux Shell's environment?)."]
             };
             const m = messages[exitCode] || ["Startup check failed", "Exit code " + exitCode];
             done({

@@ -1,7 +1,7 @@
 {
     "id": "pullWindow",
     "name": "Pull Window",
-    "description": "Launcher search over open windows that pulls the chosen one onto your current workspace (Hyprland, Sway, MangoWC and niri)",
+    "description": "Launcher search over open windows that pulls the chosen one onto your current workspace (Hyprland, Sway, Scroll, MangoWC and niri)",
     "version": "0.1.0",
     "license": "MIT",
     "author": "ReyArlena",

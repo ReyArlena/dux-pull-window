@@ -7,9 +7,9 @@ import qs.Services
 // The opposite of moving the active window away with SUPER + SHIFT + <n>.
 //
 // This file is the compositor-neutral core: search, ranking, most-recently-used order, launcher
-// items. Each compositor has a backend (HyprlandBackend.qml, SwayBackend.qml, MangoBackend.qml,
-// NiriBackend.qml) that lists windows with the compositor's own ids and moves them; see `backend`
-// below for the interface.
+// items. Each compositor has a backend (HyprlandBackend.qml, SwayBackend.qml for Sway and Scroll,
+// MangoBackend.qml, NiriBackend.qml) that lists windows with the compositor's own ids and moves
+// them; see `backend` below for the interface.
 QtObject {
     id: root
 
@@ -88,7 +88,8 @@ QtObject {
     function createBackend() {
         if (backend)
             return;
-        const file = CompositorService.isHyprland ? "HyprlandBackend.qml" : CompositorService.isSway ? "SwayBackend.qml" : CompositorService.isMango ? "MangoBackend.qml" : CompositorService.isNiri ? "NiriBackend.qml" : "";
+        const swayLike = CompositorService.isSway || CompositorService.isScroll;
+        const file = CompositorService.isHyprland ? "HyprlandBackend.qml" : swayLike ? "SwayBackend.qml" : CompositorService.isMango ? "MangoBackend.qml" : CompositorService.isNiri ? "NiriBackend.qml" : "";
         if (!file)
             return;
         const component = Qt.createComponent(Qt.resolvedUrl(file));
@@ -96,7 +97,9 @@ QtObject {
             console.error("Pull Window: could not load " + file + ": " + component.errorString());
             return;
         }
-        backend = component.createObject(root);
+        backend = component.createObject(root, CompositorService.isScroll ? {
+            msg: "scrollmsg"
+        } : {});
     }
 
     function refresh() {
