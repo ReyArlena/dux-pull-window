@@ -24,7 +24,7 @@ Handy for getting windows onto a headless or virtual output, such as a Sunshine 
 ## Requirements
 
 - Dux Shell 2.0.0 or newer
-- Hyprland (uses `hyprctl`)
+- Hyprland 0.55 or newer (uses `hyprctl` with the Lua dispatcher syntax)
 - `jq`
 
 A startup check verifies these when the plugin is enabled.
