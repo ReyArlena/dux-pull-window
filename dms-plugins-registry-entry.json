@@ -12,7 +12,8 @@
         "jq"
     ],
     "compositors": [
-        "hyprland"
+        "hyprland",
+        "sway"
     ],
     "distro": [
         "any"

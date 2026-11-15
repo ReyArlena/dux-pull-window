@@ -1,8 +1,8 @@
 # Dux Shell Plugin: Pull Window
 
 [Dux Shell](https://github.com/duxlabs-dev/dux-shell) launcher plugin that finds an open window and
-pulls it onto the workspace you are on. The opposite of sending the active window away with
-SUPER + SHIFT + number.
+pulls it onto the workspace you are on, on Hyprland or Sway. The opposite of sending the active
+window away with SUPER + SHIFT + number.
 
 Type the trigger, then part of a window title or app name:
 
@@ -12,21 +12,26 @@ Type the trigger, then part of a window title or app name:
 :pw gh pr        windows whose class or title matches "gh" then "pr"
 ```
 
-Choosing a window moves it to the active workspace of the focused monitor (the one under the mouse,
-where the launcher opens) and focuses it. If a special workspace (scratchpad) is open there, the
-window goes onto that instead. Choosing a window that is already there just focuses it.
+Choosing a window moves it to the workspace you are on and focuses it, without switching to the
+window's own workspace, so it also works for windows on headless or virtual outputs you cannot
+see. On Hyprland that is the active workspace of the focused monitor, or its special workspace
+(scratchpad) when one is open there. Choosing a window that is already there just focuses it.
 
-The list follows Hyprland's window events, so new and closed windows show up straight away.
+The list follows the compositor's window events, so new and closed windows show up straight away.
+With nothing typed, windows are in most recently used order (on Sway, from when the plugin loaded;
+before that, in Sway's own focus order).
 
 Handy for getting windows onto a headless or virtual output, such as a Sunshine streaming display.
 
 ## Requirements
 
 - Dux Shell 2.0.0 or newer
-- Hyprland 0.55 or newer (uses `hyprctl` with the Lua dispatcher syntax)
-- `jq`
+- Hyprland 0.55 or newer with a Lua config (`hyprland.lua`; the plugin moves windows with the Lua
+  dispatcher syntax) and `jq`, or
+- Sway (uses `swaymsg`)
 
-A startup check verifies these when the plugin is enabled.
+A startup check verifies the compositor, the tools and the Hyprland version when the plugin is
+enabled; it does not check for a Lua config.
 
 ## Install
 
