@@ -18,7 +18,7 @@ PluginSettings {
 
     StyledText {
         width: parent.width
-        text: "Search open windows from the launcher and pull the chosen one onto the workspace you are on. Type the trigger, then part of a window title or app name."
+        text: "Search open windows from the launcher and pull the chosen one onto the workspace you are on. Type the trigger, then part of a window title or app name. To open it from a keybind, bind dms ipc call pullWindow toggle."
         font.pixelSize: Theme.fontSizeSmall
         color: Theme.surfaceVariantText
         wrapMode: Text.WordWrap

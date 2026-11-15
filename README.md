@@ -23,6 +23,38 @@ before that, in Sway's own focus order).
 
 Handy for getting windows onto a headless or virtual output, such as a Sunshine streaming display.
 
+## Keybinds
+
+Bind a key to open the launcher straight in Pull Window mode. It uses whatever trigger is set.
+
+```
+dms ipc call pullWindow toggle     # opens it, or closes it when open
+dms ipc call pullWindow open       # opens it
+```
+
+The examples use SUPER + P; pick any free key.
+
+### Hyprland
+
+In `hyprland.lua` (or a file it `require`s):
+
+```lua
+hl.bind("SUPER + P", hl.dsp.exec_cmd("dms ipc call pullWindow toggle"), { description = "Pull window" })
+```
+
+If SUPER + P is already bound (Dux Shell's default Hyprland binds use it), add
+`hl.unbind("SUPER + P")` before it.
+
+### Sway
+
+In `~/.config/sway/config` (or a file it `include`s):
+
+```
+bindsym $mod+p exec dms ipc call pullWindow toggle
+```
+
+Reload with `swaymsg reload`.
+
 ## Requirements
 
 - Dux Shell 2.0.0 or newer

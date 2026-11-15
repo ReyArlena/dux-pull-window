@@ -8,10 +8,12 @@
     "icon": "move_down",
     "type": "composite",
     "capabilities": [
-        "window-management"
+        "window-management",
+        "ipc"
     ],
     "components": {
-        "launcher": "./PullWindow.qml"
+        "launcher": "./PullWindow.qml",
+        "daemon": "./PullWindowIpc.qml"
     },
     "settings": "./PullWindowSettings.qml",
     "startupCheck": "./StartupCheck.qml",
