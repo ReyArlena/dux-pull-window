@@ -29,8 +29,11 @@ QtObject {
     Component.onCompleted: loadSettings()
 
     onPluginServiceChanged: {
-        if (pluginService)
-            loadSettings();
+        if (!pluginService)
+            return;
+        loadSettings();
+        // Warm the cache so the first open has something to show straight away.
+        refresh();
     }
 
     property var pluginDataChangedConnection: Connections {
@@ -97,6 +100,10 @@ QtObject {
                     })).sort((a, b) => a.focusHistoryID - b.focusHistoryID);
             refreshedAt = Date.now();
             itemsChanged();
+            // The launcher does not listen to itemsChanged; this is what makes it re-query, so the
+            // first open (empty cache) fills in once hyprctl returns.
+            if (pluginService && typeof pluginService.requestLauncherUpdate === "function")
+                pluginService.requestLauncherUpdate(pluginKey);
         }, 50, 5000);
     }
 
