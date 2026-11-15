@@ -6,11 +6,13 @@
     "license": "MIT",
     "author": "ReyArlena",
     "icon": "move_down",
-    "type": "launcher",
+    "type": "composite",
     "capabilities": [
         "window-management"
     ],
-    "component": "./PullWindow.qml",
+    "components": {
+        "launcher": "./PullWindow.qml"
+    },
     "settings": "./PullWindowSettings.qml",
     "startupCheck": "./StartupCheck.qml",
     "trigger": ":pw",
