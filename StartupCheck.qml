@@ -9,9 +9,36 @@ import qs.Services
 //   MangoWC: mmsg and a reachable Mango socket.
 //   niri: niri msg and a reachable niri socket.
 QtObject {
+    id: root
+
     readonly property string minHyprland: "0.55.0"
 
+    // DMS detects the compositor asynchronously; a check that runs before that (early at login)
+    // would see no compositor and disable the plugin. Wait up to 5 s for the detection.
+    property var pendingDone: null
+    property int waitTicks: 0
+    property var detectionWait: Timer {
+        interval: 100
+        repeat: true
+        onTriggered: {
+            root.waitTicks += 1;
+            if (CompositorService.compositorDetected || root.waitTicks >= 50) {
+                stop();
+                root.checkCompositor(root.pendingDone);
+            }
+        }
+    }
+
     function check(done) {
+        if (CompositorService.compositorDetected) {
+            checkCompositor(done);
+            return;
+        }
+        pendingDone = done;
+        detectionWait.start();
+    }
+
+    function checkCompositor(done) {
         if (CompositorService.isHyprland)
             checkHyprland(done);
         else if (CompositorService.isSway)
