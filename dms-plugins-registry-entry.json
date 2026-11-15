@@ -14,7 +14,8 @@
     "compositors": [
         "hyprland",
         "sway",
-        "mangowc"
+        "mangowc",
+        "niri"
     ],
     "distro": [
         "any"

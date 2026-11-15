@@ -1,8 +1,8 @@
 # Dux Shell Plugin: Pull Window
 
 [Dux Shell](https://github.com/duxlabs-dev/dux-shell) launcher plugin that finds an open window and
-pulls it onto the workspace you are on, on Hyprland, Sway or MangoWC. The opposite of sending the
-active window away with SUPER + SHIFT + number.
+pulls it onto the workspace you are on, on Hyprland, Sway, MangoWC or niri. The opposite of sending
+the active window away with SUPER + SHIFT + number.
 
 Type the trigger, then part of a window title or app name:
 
@@ -20,7 +20,8 @@ window that is already there just focuses it.
 
 The list follows the compositor's window events, so new and closed windows show up straight away.
 With nothing typed, windows are in most recently used order (on Sway and MangoWC, from when the
-plugin loaded; before that, in the compositor's own window order).
+plugin loaded; before that, in the compositor's own window order; Hyprland and niri keep their own
+focus history).
 
 Handy for getting windows onto a headless or virtual output, such as a Sunshine streaming display.
 
@@ -64,13 +65,22 @@ In `~/.config/mango/config.conf` (or a file it sources):
 bind=SUPER,p,spawn,dms ipc call pullWindow toggle
 ```
 
+### niri
+
+In the `binds` section of `~/.config/niri/config.kdl`:
+
+```kdl
+Mod+P { spawn "dms" "ipc" "call" "pullWindow" "toggle"; }
+```
+
 ## Requirements
 
 - Dux Shell 2.0.0 or newer
 - Hyprland 0.55 or newer with a Lua config (`hyprland.lua`; the plugin moves windows with the Lua
   dispatcher syntax) and `jq`, or
 - Sway (uses `swaymsg`), or
-- MangoWC (uses `mmsg`)
+- MangoWC (uses `mmsg`), or
+- niri (uses `niri msg`)
 
 A startup check verifies the compositor, the tools and the Hyprland version when the plugin is
 enabled; it does not check for a Lua config.

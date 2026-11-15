@@ -7,6 +7,7 @@ import qs.Services
 //   Hyprland: hyprctl (0.55+ for the Lua dispatcher syntax), and jq to read the focused workspace.
 //   Sway: swaymsg and a reachable Sway socket.
 //   MangoWC: mmsg and a reachable Mango socket.
+//   niri: niri msg and a reachable niri socket.
 QtObject {
     readonly property string minHyprland: "0.55.0"
 
@@ -17,10 +18,12 @@ QtObject {
             checkSway(done);
         else if (CompositorService.isMango)
             checkMango(done);
+        else if (CompositorService.isNiri)
+            checkNiri(done);
         else
             done({
                 title: "Compositor not supported",
-                details: "Pull Window works on Hyprland, Sway and MangoWC."
+                details: "Pull Window works on Hyprland, Sway, MangoWC and niri."
             });
     }
 
@@ -82,6 +85,26 @@ QtObject {
             const messages = {
                 1: ["mmsg not found", "Pull Window needs MangoWC's mmsg."],
                 2: ["Mango socket not reachable", "mmsg could not talk to Mango (is MANGO_INSTANCE_SIGNATURE set in Dux Shell's environment?)."]
+            };
+            const m = messages[exitCode] || ["Startup check failed", "Exit code " + exitCode];
+            done({
+                title: m[0],
+                details: m[1]
+            });
+        });
+    }
+
+    function checkNiri(done) {
+        const script = "command -v niri >/dev/null 2>&1 || exit 1\n"
+            + "niri msg version >/dev/null 2>&1 || exit 2";
+        Proc.runCommand("pullWindow.startupCheck", ["sh", "-c", script], (stdout, exitCode) => {
+            if (exitCode === 0) {
+                done(null);
+                return;
+            }
+            const messages = {
+                1: ["niri not found", "Pull Window needs the niri command for niri msg."],
+                2: ["niri socket not reachable", "niri msg could not talk to niri (is NIRI_SOCKET set in Dux Shell's environment?)."]
             };
             const m = messages[exitCode] || ["Startup check failed", "Exit code " + exitCode];
             done({
