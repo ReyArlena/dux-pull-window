@@ -41,7 +41,7 @@ dms ipc call plugins enable pullWindow
 
 DMS Settings → Plugins → Pull Window:
 
-- **Trigger** - launcher prefix, default `:pw`.
+- **Trigger** - launcher prefix, default `:pw`. Applied with Save or Enter.
 - **Hide windows on this workspace** - leave out windows already on the workspace you are on. Off by default.
 
 ## License

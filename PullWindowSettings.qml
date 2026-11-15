@@ -2,6 +2,7 @@ import QtQuick
 import qs.Common
 import qs.DCommon.Widgets
 import qs.Modules.Plugins
+import qs.Services
 
 PluginSettings {
     id: root
@@ -23,13 +24,74 @@ PluginSettings {
         wrapMode: Text.WordWrap
     }
 
-    StringSetting {
-        settingKey: "trigger"
-        label: "Trigger"
-        description: "Launcher prefix for this plugin. Avoid prefixes used by DMS or other plugins (e.g. :e, :ow, /). Left empty, :pw is used."
-        placeholder: ":pw"
-        defaultValue: ":pw"
+    // Trigger with an explicit Save button, so it is clear when the value is stored.
+    Column {
+        id: triggerSetting
+        width: parent.width
+        spacing: Theme.spacingS
+
+        readonly property string defaultTrigger: ":pw"
+        property string saved: defaultTrigger
+        readonly property string pending: (triggerField.text || "").trim() || defaultTrigger
+        readonly property bool dirty: pending !== saved
+
+        function load() {
+            if (!root.pluginService)
+                return;
+            saved = (root.loadValue("trigger", defaultTrigger) || "").trim() || defaultTrigger;
+            triggerField.text = saved;
+        }
+
+        function save() {
+            if (!dirty)
+                return;
+            root.saveValue("trigger", pending);
+            saved = pending;
+            triggerField.text = pending;
+            ToastService.showInfo("Pull Window trigger saved: " + pending);
+        }
+
+        StyledText {
+            text: "Trigger"
+            font.pixelSize: Theme.fontSizeMedium
+            font.weight: Theme.fontWeightMedium
+            color: Theme.surfaceText
+        }
+
+        StyledText {
+            width: parent.width
+            text: "Launcher prefix for this plugin. Avoid prefixes used by DMS or other plugins (e.g. :e, :ow, /). Left empty, :pw is used. Press Save or Enter to apply."
+            font.pixelSize: Theme.fontSizeSmall
+            color: Theme.surfaceVariantText
+            wrapMode: Text.WordWrap
+        }
+
+        Row {
+            width: parent.width
+            spacing: Theme.spacingS
+
+            DTextField {
+                id: triggerField
+                width: parent.width - saveButton.width - parent.spacing
+                anchors.verticalCenter: parent.verticalCenter
+                placeholderText: triggerSetting.defaultTrigger
+                onAccepted: triggerSetting.save()
+            }
+
+            DButton {
+                id: saveButton
+                anchors.verticalCenter: parent.verticalCenter
+                text: triggerSetting.dirty ? "Save" : "Saved"
+                reserveText: "Saved"
+                iconName: triggerSetting.dirty ? "save" : "check"
+                enabled: triggerSetting.dirty
+                onClicked: triggerSetting.save()
+            }
+        }
     }
+
+    onPluginServiceChanged: triggerSetting.load()
+    Component.onCompleted: Qt.callLater(triggerSetting.load)
 
     ToggleSetting {
         settingKey: "hideCurrentWorkspace"
