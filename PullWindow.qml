@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import qs.Common
 import qs.Services
 
@@ -10,12 +11,15 @@ QtObject {
 
     readonly property string pluginKey: "pullWindow"
     readonly property int maxResults: 50
-    // The window list is refreshed in the background; a short TTL keeps it current each time the
-    // launcher opens without running hyprctl on every keystroke.
+    // The window list is kept current from Hyprland events, so it is ready when the launcher opens.
+    // The TTL is a fallback in case an event was missed, without running hyprctl on every keystroke.
     readonly property int cacheTtlMs: 1000
+    // Hyprland events that change the list, its order, or the target workspace.
+    readonly property var watchedEvents: ["openwindow", "closewindow", "movewindow", "movewindowv2", "windowtitle", "windowtitlev2", "activewindow", "activewindowv2", "workspace", "workspacev2", "focusedmon", "focusedmonv2", "activespecial", "activespecialv2", "minimized"]
 
     property var pluginService: null
     property string trigger: ":pw"
+    property bool hideCurrentWorkspace: false
 
     // [{ address, title, cls, workspace, workspaceId, focusHistoryID }]
     property var windows: []
@@ -36,6 +40,15 @@ QtObject {
         refresh();
     }
 
+    property var hyprlandEventsConnection: Connections {
+        target: Hyprland
+
+        function onRawEvent(event) {
+            if (root.watchedEvents.indexOf(event.name) >= 0)
+                root.refresh();
+        }
+    }
+
     property var pluginDataChangedConnection: Connections {
         target: pluginService
         enabled: pluginService !== null
@@ -51,6 +64,7 @@ QtObject {
             return;
         // An empty trigger would answer every launcher query.
         trigger = (pluginService.loadPluginData(pluginKey, "trigger", ":pw") || "").trim() || ":pw";
+        hideCurrentWorkspace = pluginService.loadPluginData(pluginKey, "hideCurrentWorkspace", false) === true;
     }
 
     // Workspace on the focused monitor (the one the mouse is on, where the launcher opens).
@@ -71,7 +85,8 @@ QtObject {
         return ws.id < 0 ? ws.name : String(ws.id);
     }
 
-    // One process: clients, a separator line, then monitors.
+    // One process: clients, a separator line, then monitors. Calls within the debounce window
+    // (a burst of events) collapse into one run.
     function refresh() {
         refreshing = true;
         Proc.runCommand("pullWindow.refresh", ["sh", "-c", "hyprctl clients -j || exit 1\necho '\x1e'\nhyprctl monitors -j || exit 2"], (stdout, exitCode) => {
@@ -166,8 +181,8 @@ QtObject {
         const matches = [];
         for (let i = 0; i < windows.length; i++) {
             const w = windows[i];
-            // Already here, nothing to pull.
-            if (w.workspaceId === target)
+            // Already here; pulling it only focuses it.
+            if (hideCurrentWorkspace && w.workspaceId === target)
                 continue;
             // Class first so "firefox" or "ghostty" finds every window of that app.
             const s = Math.max(score(w.cls + " " + w.title, search), score(w.title, search));
@@ -183,7 +198,7 @@ QtObject {
             const w = matches[i].w;
             items.push({
                 name: w.title,
-                comment: w.cls + "  -  workspace " + w.workspace,
+                comment: w.cls + "  -  workspace " + w.workspace + (w.workspaceId === target ? " (this one)" : ""),
                 action: "pull:" + w.address,
                 icon: iconFor(w.cls),
                 categories: ["Pull Window"],

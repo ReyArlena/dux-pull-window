@@ -7,14 +7,17 @@ SUPER + SHIFT + number.
 Type the trigger, then part of a window title or app name:
 
 ```
-:pw              every window not on this workspace, most recently used first
+:pw              every open window, most recently used first
 :pw firefox      Firefox windows
 :pw gh pr        windows whose class or title matches "gh" then "pr"
 ```
 
 Choosing a window moves it to the active workspace of the focused monitor (the one under the mouse,
 where the launcher opens) and focuses it. If a special workspace (scratchpad) is open there, the
-window goes onto that instead.
+window goes onto that instead. Windows already on that workspace are marked "(this one)"; choosing
+one just focuses it.
+
+The list follows Hyprland's window events, so new and closed windows show up straight away.
 
 Handy for getting windows onto a headless or virtual output, such as a Sunshine streaming display.
 
@@ -39,6 +42,7 @@ dms ipc call plugins enable pullWindow
 DMS Settings → Plugins → Pull Window:
 
 - **Trigger** - launcher prefix, default `:pw`.
+- **Hide windows on this workspace** - leave out windows already on the workspace you are on. Off by default.
 
 ## License
 

@@ -30,4 +30,11 @@ PluginSettings {
         placeholder: ":pw"
         defaultValue: ":pw"
     }
+
+    ToggleSetting {
+        settingKey: "hideCurrentWorkspace"
+        label: "Hide windows on this workspace"
+        description: "Leave out windows already on the workspace you are on, since there is nothing to pull. Off, they are listed too and choosing one focuses it."
+        defaultValue: false
+    }
 }
