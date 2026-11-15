@@ -6,6 +6,7 @@ import qs.Services
 // what its backend uses.
 //   Hyprland: hyprctl (0.55+ for the Lua dispatcher syntax), and jq to read the focused workspace.
 //   Sway: swaymsg and a reachable Sway socket.
+//   MangoWC: mmsg and a reachable Mango socket.
 QtObject {
     readonly property string minHyprland: "0.55.0"
 
@@ -14,10 +15,12 @@ QtObject {
             checkHyprland(done);
         else if (CompositorService.isSway)
             checkSway(done);
+        else if (CompositorService.isMango)
+            checkMango(done);
         else
             done({
                 title: "Compositor not supported",
-                details: "Pull Window works on Hyprland and Sway."
+                details: "Pull Window works on Hyprland, Sway and MangoWC."
             });
     }
 
@@ -59,6 +62,26 @@ QtObject {
             const messages = {
                 1: ["swaymsg not found", "Pull Window needs Sway's swaymsg."],
                 2: ["Sway socket not reachable", "swaymsg could not talk to Sway (is SWAYSOCK set in Dux Shell's environment?)."]
+            };
+            const m = messages[exitCode] || ["Startup check failed", "Exit code " + exitCode];
+            done({
+                title: m[0],
+                details: m[1]
+            });
+        });
+    }
+
+    function checkMango(done) {
+        const script = "command -v mmsg >/dev/null 2>&1 || exit 1\n"
+            + "mmsg get version >/dev/null 2>&1 || exit 2";
+        Proc.runCommand("pullWindow.startupCheck", ["sh", "-c", script], (stdout, exitCode) => {
+            if (exitCode === 0) {
+                done(null);
+                return;
+            }
+            const messages = {
+                1: ["mmsg not found", "Pull Window needs MangoWC's mmsg."],
+                2: ["Mango socket not reachable", "mmsg could not talk to Mango (is MANGO_INSTANCE_SIGNATURE set in Dux Shell's environment?)."]
             };
             const m = messages[exitCode] || ["Startup check failed", "Exit code " + exitCode];
             done({

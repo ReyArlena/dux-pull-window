@@ -13,7 +13,8 @@
     ],
     "compositors": [
         "hyprland",
-        "sway"
+        "sway",
+        "mangowc"
     ],
     "distro": [
         "any"
