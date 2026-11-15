@@ -218,11 +218,17 @@ QtObject {
         // Re-read the target now: the list may be up to a second old.
         const script = 'ws=$(hyprctl monitors -j | jq -r \'.[] | select(.focused) | if .specialWorkspace.name != "" then .specialWorkspace.name else (.activeWorkspace.id | tostring) end\')\n'
             + '[ -n "$ws" ] || exit 1\n'
-            + 'hyprctl dispatch "hl.dsp.window.move({ workspace = \\"$ws\\", follow = false, window = \\"address:$1\\" })" >/dev/null\n'
-            + 'hyprctl dispatch "hl.dsp.focus({ window = \\"address:$1\\" })" >/dev/null';
+            + '[ "$(hyprctl dispatch "hl.dsp.window.move({ workspace = \\"$ws\\", follow = false, window = \\"address:$1\\" })")" = ok ] || exit 2\n'
+            + '[ "$(hyprctl dispatch "hl.dsp.focus({ window = \\"address:$1\\" })")" = ok ] || exit 3';
         Proc.runCommand("pullWindow.pull", ["sh", "-c", script, "_", address], (stdout, exitCode) => {
+            const errors = {
+                1: "could not find the focused workspace",
+                2: "Hyprland refused to move the window",
+                3: "moved the window but could not focus it",
+                124: "Hyprland did not respond"
+            };
             if (exitCode !== 0)
-                ToastService.showError("Pull Window: could not find the focused workspace");
+                ToastService.showError("Pull Window: " + (errors[exitCode] || "failed (exit " + exitCode + ")"));
         }, 0, 5000);
     }
 }
