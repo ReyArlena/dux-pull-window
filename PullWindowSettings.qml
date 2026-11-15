@@ -93,13 +93,6 @@ PluginSettings {
     onPluginServiceChanged: triggerSetting.load()
     Component.onCompleted: Qt.callLater(triggerSetting.load)
 
-    ToggleSetting {
-        settingKey: "hideCurrentWorkspace"
-        label: "Hide windows on this workspace"
-        description: "Leave out windows already on the workspace you are on, since there is nothing to pull. Off, they are listed too and choosing one focuses it."
-        defaultValue: false
-    }
-
     StyledRect {
         width: parent.width
         height: referenceColumn.implicitHeight + Theme.spacingL * 2

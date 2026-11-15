@@ -14,8 +14,7 @@ Type the trigger, then part of a window title or app name:
 
 Choosing a window moves it to the active workspace of the focused monitor (the one under the mouse,
 where the launcher opens) and focuses it. If a special workspace (scratchpad) is open there, the
-window goes onto that instead. Windows already on that workspace are marked "(this one)"; choosing
-one just focuses it.
+window goes onto that instead. Choosing a window that is already there just focuses it.
 
 The list follows Hyprland's window events, so new and closed windows show up straight away.
 
@@ -42,7 +41,6 @@ dms ipc call plugins enable pullWindow
 DMS Settings → Plugins → Pull Window:
 
 - **Trigger** - launcher prefix, default `:pw`. Applied with Save or Enter.
-- **Hide windows on this workspace** - leave out windows already on the workspace you are on. Off by default.
 
 ## License
 

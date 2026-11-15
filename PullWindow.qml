@@ -14,17 +14,14 @@ QtObject {
     // The window list is kept current from Hyprland events, so it is ready when the launcher opens.
     // The TTL is a fallback in case an event was missed, without running hyprctl on every keystroke.
     readonly property int cacheTtlMs: 1000
-    // Hyprland events that change the list, its order, or the target workspace.
-    readonly property var watchedEvents: ["openwindow", "closewindow", "movewindow", "movewindowv2", "windowtitle", "windowtitlev2", "activewindow", "activewindowv2", "workspace", "workspacev2", "focusedmon", "focusedmonv2", "activespecial", "activespecialv2", "minimized"]
+    // Hyprland events that change the list or its order.
+    readonly property var watchedEvents: ["openwindow", "closewindow", "windowtitle", "windowtitlev2", "activewindow", "activewindowv2", "minimized"]
 
     property var pluginService: null
     property string trigger: ":pw"
-    property bool hideCurrentWorkspace: false
 
-    // [{ address, title, cls, workspace, workspaceId, focusHistoryID }]
+    // [{ address, title, cls, focusHistoryID }]
     property var windows: []
-    // Workspace the launcher was opened on, as a Hyprland workspace selector ("3", "special:scratch").
-    property string target: ""
     property double refreshedAt: 0
     property bool refreshing: false
 
@@ -64,53 +61,25 @@ QtObject {
             return;
         // An empty trigger would answer every launcher query.
         trigger = (pluginService.loadPluginData(pluginKey, "trigger", ":pw") || "").trim() || ":pw";
-        hideCurrentWorkspace = pluginService.loadPluginData(pluginKey, "hideCurrentWorkspace", false) === true;
     }
 
-    // Workspace on the focused monitor (the one the mouse is on, where the launcher opens).
-    // An open special workspace (scratchpad) wins, since that is what is on screen.
-    function targetOf(monitors) {
-        for (let i = 0; i < monitors.length; i++) {
-            const m = monitors[i];
-            if (!m.focused)
-                continue;
-            if (m.specialWorkspace && m.specialWorkspace.name)
-                return m.specialWorkspace.name;
-            return String(m.activeWorkspace.id);
-        }
-        return "";
-    }
-
-    function selectorOf(ws) {
-        return ws.id < 0 ? ws.name : String(ws.id);
-    }
-
-    // One process: clients, a separator line, then monitors. Calls within the debounce window
-    // (a burst of events) collapse into one run.
+    // Calls within the debounce window (a burst of events) collapse into one run.
     function refresh() {
         refreshing = true;
-        Proc.runCommand("pullWindow.refresh", ["sh", "-c", "hyprctl clients -j || exit 1\necho '\x1e'\nhyprctl monitors -j || exit 2"], (stdout, exitCode) => {
+        Proc.runCommand("pullWindow.refresh", ["hyprctl", "clients", "-j"], (stdout, exitCode) => {
             refreshing = false;
             if (exitCode !== 0)
                 return;
-            const parts = (stdout || "").split("\x1e");
-            if (parts.length < 2)
-                return;
             let clients = [];
-            let monitors = [];
             try {
-                clients = JSON.parse(parts[0]);
-                monitors = JSON.parse(parts[1]);
+                clients = JSON.parse(stdout || "[]");
             } catch (e) {
                 return;
             }
-            target = targetOf(monitors);
             windows = clients.filter(c => c.mapped && !c.hidden && c.address).map(c => ({
                         address: c.address,
                         title: c.title || c.initialTitle || c.class || "",
                         cls: c.class || c.initialClass || "",
-                        workspace: c.workspace ? (c.workspace.name || String(c.workspace.id)) : "",
-                        workspaceId: c.workspace ? selectorOf(c.workspace) : "",
                         focusHistoryID: typeof c.focusHistoryID === "number" ? c.focusHistoryID : 9999
                     })).sort((a, b) => a.focusHistoryID - b.focusHistoryID);
             refreshedAt = Date.now();
@@ -181,9 +150,6 @@ QtObject {
         const matches = [];
         for (let i = 0; i < windows.length; i++) {
             const w = windows[i];
-            // Already here; pulling it only focuses it.
-            if (hideCurrentWorkspace && w.workspaceId === target)
-                continue;
             // Class first so "firefox" or "ghostty" finds every window of that app.
             const s = Math.max(score(w.cls + " " + w.title, search), score(w.title, search));
             if (s > 0)
@@ -198,7 +164,7 @@ QtObject {
             const w = matches[i].w;
             items.push({
                 name: w.title,
-                comment: w.cls + "  -  workspace " + w.workspace + (w.workspaceId === target ? " (this one)" : ""),
+                comment: w.cls,
                 action: "pull:" + w.address,
                 icon: iconFor(w.cls),
                 categories: ["Pull Window"],
@@ -215,7 +181,7 @@ QtObject {
         const address = item.action.substring(5);
         if (!/^0x[0-9a-f]+$/i.test(address))
             return;
-        // Re-read the target now: the list may be up to a second old.
+        // Target: the active workspace on the focused monitor, or its open special workspace.
         const script = 'ws=$(hyprctl monitors -j | jq -r \'.[] | select(.focused) | if .specialWorkspace.name != "" then .specialWorkspace.name else (.activeWorkspace.id | tostring) end\')\n'
             + '[ -n "$ws" ] || exit 1\n'
             + '[ "$(hyprctl dispatch "hl.dsp.window.move({ workspace = \\"$ws\\", follow = false, window = \\"address:$1\\" })")" = ok ] || exit 2\n'
