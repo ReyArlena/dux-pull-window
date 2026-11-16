@@ -27,7 +27,11 @@ With nothing typed, windows are in most recently used order. Hyprland and niri k
 history; on Sway, Scroll and MangoWC it starts when the plugin loads, before that the list follows
 the compositor's own window order.
 
-Handy for getting windows onto a headless or virtual output, such as a Sunshine streaming display.
+## Why
+
+I made this for when I'm connected to my PC remotely on a headless display (eg streaming with
+Sunshine). You can pull windows that would otherwise be out of sight on other monitors or
+workspaces onto the headless display you're using, or just use it for general window management.
 
 ## Keybinds
 
