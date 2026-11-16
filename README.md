@@ -8,6 +8,8 @@
 pulls it onto the workspace you are on, on Hyprland, Sway, Scroll, MangoWC or niri. The opposite of
 sending the active window away with SUPER + SHIFT + number.
 
+![The launcher in Pull Window mode listing open windows](assets/screenshot.png)
+
 Type the trigger, then part of a window title or app name:
 
 ```
