@@ -104,6 +104,9 @@ Mod+P { spawn "dms" "ipc" "call" "pullWindow" "toggle"; }
 A startup check verifies the compositor, the tools and the Hyprland version when the plugin is
 enabled; it does not check for a Lua config.
 
+Miracle isn't supported for now. As of 0.11.1 its IPC doesn't report window titles, and moving a
+window onto the workspace you're on either switches workspace or loses the window
+
 ## Install
 
 ```bash
