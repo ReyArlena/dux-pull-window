@@ -107,6 +107,9 @@ enabled; it does not check for a Lua config.
 Miracle isn't supported for now. As of 0.11.1 its IPC doesn't report window titles, and moving a
 window onto the workspace you're on either switches workspace or loses the window
 
+labwc isn't supported either. It has no IPC, so the only way to bring a window forward from
+outside is to activate it, which always switches to that window's workspace
+
 ## Install
 
 ```bash
