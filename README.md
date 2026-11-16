@@ -114,6 +114,15 @@ outside is to activate it, which always switches to that window's workspace
 
 ## Install
 
+### From the plugin registry
+
+- In the app: Settings → Plugins → Browse, find Pull Window and install it
+- From the CLI: `dms plugins install pullWindow`
+
+Update later with `dms plugins update pullWindow`, or remove it with `dms plugins uninstall pullWindow`.
+
+### Manually
+
 ```bash
 git clone https://github.com/ReyArlena/dux-pull-window ~/.config/dms/plugins/dux-pull-window
 dms ipc call plugin-scan scan
