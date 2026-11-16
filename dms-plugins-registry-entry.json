@@ -9,5 +9,5 @@
     "dependencies": [],
     "compositors": ["hyprland", "sway", "scroll", "mangowc", "niri"],
     "distro": ["any"],
-    "screenshot": "https://raw.githubusercontent.com/ReyArlena/dux-pull-window/main/assets/pull-window-preview.webp"
+    "screenshot": "https://raw.githubusercontent.com/ReyArlena/dux-pull-window/main/assets/screenshot.webp"
 }
