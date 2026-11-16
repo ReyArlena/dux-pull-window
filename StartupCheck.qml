@@ -4,7 +4,7 @@ import qs.Services
 
 // Runs once when the plugin is enabled: checks the running compositor is supported and has
 // what its backend uses.
-//   Hyprland: hyprctl (0.55+ for the Lua dispatcher syntax), and jq to read the focused workspace.
+//   Hyprland: hyprctl, 0.55+ for the Lua dispatcher syntax.
 //   Sway / Scroll: swaymsg / scrollmsg and a reachable socket.
 //   MangoWC: mmsg and a reachable Mango socket.
 //   niri: niri msg and a reachable niri socket.
@@ -56,30 +56,48 @@ QtObject {
             });
     }
 
+    // -1, 0 or 1 comparing dotted versions numerically ("0.55.0" vs "0.57.2").
+    function compareVersions(a, b) {
+        const pa = a.split(".").map(n => parseInt(n, 10) || 0);
+        const pb = b.split(".").map(n => parseInt(n, 10) || 0);
+        for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+            const d = (pa[i] || 0) - (pb[i] || 0);
+            if (d !== 0)
+                return d < 0 ? -1 : 1;
+        }
+        return 0;
+    }
+
     function checkHyprland(done) {
         const script = "command -v hyprctl >/dev/null 2>&1 || exit 1\n"
             + "[ -n \"$HYPRLAND_INSTANCE_SIGNATURE\" ] || exit 2\n"
-            + "command -v jq >/dev/null 2>&1 || exit 3\n"
-            + "v=$(hyprctl version -j | jq -r '.version // empty' | sed 's/^v//')\n"
-            + "[ -n \"$v\" ] || exit 4\n"
-            + "[ \"$(printf '%s\\n%s\\n' \"$1\" \"$v\" | sort -V | head -1)\" = \"$1\" ] || { printf %s \"$v\"; exit 5; }";
-        Proc.runCommand("pullWindow.startupCheck", ["sh", "-c", script, "_", minHyprland], (stdout, exitCode) => {
-            if (exitCode === 0) {
-                done(null);
+            + "hyprctl version -j || exit 4";
+        Proc.runCommand("pullWindow.startupCheck", ["sh", "-c", script], (stdout, exitCode) => {
+            const fail = (title, details) => done({
+                    title: title,
+                    details: details
+                });
+            if (exitCode === 1) {
+                fail("hyprctl not found", "Pull Window needs Hyprland's hyprctl.");
                 return;
             }
-            const messages = {
-                1: ["hyprctl not found", "Pull Window needs Hyprland's hyprctl."],
-                2: ["Hyprland socket not found", "HYPRLAND_INSTANCE_SIGNATURE is not set in Dux Shell's environment."],
-                3: ["jq is required", "Install jq, then enable the plugin again."],
-                4: ["Could not read the Hyprland version", "hyprctl version -j returned no version."],
-                5: ["Hyprland " + minHyprland + " or newer is required", "Found " + ((stdout || "").trim() || "an older version") + ". Pull Window moves windows with the Lua dispatcher syntax added in Hyprland " + minHyprland + "."]
-            };
-            const m = messages[exitCode] || ["Startup check failed", "Exit code " + exitCode];
-            done({
-                title: m[0],
-                details: m[1]
-            });
+            if (exitCode === 2) {
+                fail("Hyprland socket not found", "HYPRLAND_INSTANCE_SIGNATURE is not set in Dux Shell's environment.");
+                return;
+            }
+            let version = "";
+            try {
+                version = String(JSON.parse(stdout || "").version || "").replace(/^v/, "");
+            } catch (e) {}
+            if (exitCode !== 0 || !/^[0-9]+(\.[0-9]+)*/.test(version)) {
+                fail("Could not read the Hyprland version", "hyprctl version -j returned no version.");
+                return;
+            }
+            if (compareVersions(version.match(/^[0-9]+(\.[0-9]+)*/)[0], minHyprland) < 0) {
+                fail("Hyprland " + minHyprland + " or newer is required", "Found " + version + ". Pull Window moves windows with the Lua dispatcher syntax added in Hyprland " + minHyprland + ".");
+                return;
+            }
+            done(null);
         });
     }
 

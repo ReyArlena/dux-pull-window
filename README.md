@@ -97,7 +97,7 @@ Mod+P { spawn "dms" "ipc" "call" "pullWindow" "toggle"; }
 
 - Dux Shell 2.0.0 or newer
 - Hyprland 0.55 or newer with a Lua config (`hyprland.lua`; the plugin moves windows with the Lua
-  dispatcher syntax) and `jq`, or
+  dispatcher syntax), or
 - Sway (uses `swaymsg`), or
 - Scroll (uses `scrollmsg`), or
 - MangoWC (uses `mmsg`), or

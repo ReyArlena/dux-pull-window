@@ -19,9 +19,6 @@
     "startupCheck": "./StartupCheck.qml",
     "trigger": ":pw",
     "requires_dms": ">=2.0.0",
-    "requires": [
-        "jq"
-    ],
     "permissions": [
         "settings_read",
         "settings_write",

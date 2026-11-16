@@ -48,25 +48,46 @@ QtObject {
         }, 50, 5000);
     }
 
-    // done(null) on success, done("reason") on failure. The target is the active workspace of
-    // the focused monitor, or its special workspace (scratchpad) when one is open there.
+    // The active workspace of the focused monitor, or its special workspace (scratchpad) when
+    // one is open there, as a Lua workspace selector; "" when it cannot be found.
+    function targetWorkspace(stdout) {
+        let monitors;
+        try {
+            monitors = JSON.parse(stdout || "");
+        } catch (e) {
+            return "";
+        }
+        const mon = Array.isArray(monitors) ? monitors.find(m => m.focused) : null;
+        if (!mon)
+            return "";
+        const special = mon.specialWorkspace && mon.specialWorkspace.name;
+        const ws = special ? special : (mon.activeWorkspace ? String(mon.activeWorkspace.id) : "");
+        // It goes inside a Lua string.
+        return /["\\\n]/.test(ws) ? "" : ws;
+    }
+
+    // done(null) on success, done("reason") on failure.
     function pull(id, done) {
         if (!/^0x[0-9a-f]+$/i.test(id)) {
             done("unknown window");
             return;
         }
-        const script = 'ws=$(hyprctl monitors -j | jq -r \'.[] | select(.focused) | if .specialWorkspace.name != "" then .specialWorkspace.name else (.activeWorkspace.id | tostring) end\')\n'
-            + '[ -n "$ws" ] || exit 1\n'
-            + '[ "$(hyprctl dispatch "hl.dsp.window.move({ workspace = \\"$ws\\", follow = false, window = \\"address:$1\\" })")" = ok ] || exit 2\n'
-            + '[ "$(hyprctl dispatch "hl.dsp.focus({ window = \\"address:$1\\" })")" = ok ] || exit 3';
-        Proc.runCommand("pullWindow.hyprland.pull", ["sh", "-c", script, "_", id], (stdout, exitCode) => {
-            const errors = {
-                1: "could not find the focused workspace",
-                2: "Hyprland refused to move the window",
-                3: "moved the window but could not focus it",
-                124: "Hyprland did not respond"
-            };
-            done(exitCode === 0 ? null : (errors[exitCode] || "failed (exit " + exitCode + ")"));
+        Proc.runCommand("pullWindow.hyprland.monitors", ["hyprctl", "monitors", "-j"], (stdout, exitCode) => {
+            const ws = exitCode === 0 ? targetWorkspace(stdout) : "";
+            if (!ws) {
+                done(exitCode === 124 ? "Hyprland did not respond" : "could not find the focused workspace");
+                return;
+            }
+            const script = '[ "$(hyprctl dispatch "hl.dsp.window.move({ workspace = \\"$2\\", follow = false, window = \\"address:$1\\" })")" = ok ] || exit 2\n'
+                + '[ "$(hyprctl dispatch "hl.dsp.focus({ window = \\"address:$1\\" })")" = ok ] || exit 3';
+            Proc.runCommand("pullWindow.hyprland.pull", ["sh", "-c", script, "_", id, ws], (out, code) => {
+                const errors = {
+                    2: "Hyprland refused to move the window",
+                    3: "moved the window but could not focus it",
+                    124: "Hyprland did not respond"
+                };
+                done(code === 0 ? null : (errors[code] || "failed (exit " + code + ")"));
+            }, 0, 5000);
         }, 0, 5000);
     }
 }
