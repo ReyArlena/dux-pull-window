@@ -3,10 +3,12 @@ import Quickshell.Io
 import qs.Services
 
 // Daemon component: IPC for a compositor keybind. DMS registers plugin IPC handlers from the
-// daemon (an Item, instantiated once), not from the launcher component.
+// daemon (instantiated once), not from the launcher component. It's a QtObject rather than an
+// Item since it draws nothing; an Item logs "Created graphical object was not placed in the
+// graphics scene" on every load.
 //   dms ipc call pullWindow toggle   opens the launcher in Pull Window mode, or closes it
 //   dms ipc call pullWindow open     opens it (no toggle)
-Item {
+QtObject {
     id: root
 
     property var pluginService: null
@@ -18,7 +20,7 @@ Item {
         return ((saved || "").trim() || ":pw") + " ";
     }
 
-    IpcHandler {
+    property var ipc: IpcHandler {
         target: "pullWindow"
 
         function open(): string {
