@@ -26,6 +26,7 @@ QtObject {
     //   signal updated                      the window list or the focused window changed
     //   refresh(done)                       done([{ id, title, appId }], focusedId), or done(null)
     //   pull(id, done)                      done(null) on success, done("reason") on failure
+    //   ownHistory (optional)               true when refresh's list is already most recent first
     property var backend: null
 
     // [{ id, title, appId }], most recently used first.
@@ -117,6 +118,15 @@ QtObject {
         const byId = {};
         for (let i = 0; i < list.length; i++)
             byId[list[i].id] = list[i];
+        // A backend with the compositor's own focus history (Hyprland) is already in the right
+        // order, so we take it as is.
+        if (backend && backend.ownHistory === true) {
+            recent = list.map(w => w.id);
+            windows = list;
+            refreshedAt = Date.now();
+            itemsChanged();
+            return;
+        }
         // Closed windows drop out; new ones go after the known ones, in the backend's order.
         let order = recent.filter(id => byId[id] !== undefined);
         const known = {};
