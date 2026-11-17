@@ -24,7 +24,8 @@ QtObject {
 
     // Backend interface:
     //   signal updated                      the window list or the focused window changed
-    //   refresh(done)                       done([{ id, title, appId }], focusedId), or done(null)
+    //   refresh(done, full)                 done([{ id, title, appId }], focusedId), or done(null);
+    //                                       full when the launcher asks (Sway may re-read its tree)
     //   pull(id, done)                      done(null) on success, done("reason") on failure
     //   ownHistory (optional)               true when refresh's list is already most recent first
     property var backend: null
@@ -103,7 +104,9 @@ QtObject {
         } : {});
     }
 
-    function refresh() {
+    // full is only set when the launcher asks, so a backend's heavier read (Sway's get_tree)
+    // never runs from window events.
+    function refresh(full) {
         if (!backend)
             return;
         refreshing = true;
@@ -111,7 +114,7 @@ QtObject {
             refreshing = false;
             if (list)
                 applyList(list, focusedId);
-        });
+        }, full === true);
     }
 
     function applyList(list, focusedId) {
@@ -198,7 +201,7 @@ QtObject {
 
     function getItems(query) {
         if (Date.now() - refreshedAt > cacheTtlMs && !refreshing)
-            refresh();
+            refresh(true);
 
         const search = (query || "").trim().toLowerCase();
         const matches = [];

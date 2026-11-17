@@ -16,9 +16,52 @@ QtObject {
     // The window list or the focused window changed.
     signal updated
 
+    // [{ id, title, appId }] and the focused window, kept up to date from the window events below.
+    property var windows: []
+    property string focusedId: ""
+    property bool loaded: false
+
+    // Each window event carries the window itself, so we update the list from that rather than
+    // reading the whole tree with get_tree on every event.
     property var windowEvents: I3IpcListener {
         subscriptions: ["window"]
-        onIpcEvent: event => root.updated()
+        onIpcEvent: event => root.apply(event.data)
+    }
+
+    function entry(node) {
+        const appId = node.app_id || (node.window_properties && node.window_properties.class) || "";
+        return {
+            id: String(node.id),
+            title: node.name || appId,
+            appId: appId
+        };
+    }
+
+    // Other changes (move, floating, fullscreen, urgent, mark) leave the list as it is.
+    function apply(data) {
+        let event;
+        try {
+            event = JSON.parse(data || "");
+        } catch (e) {
+            return;
+        }
+        const node = event.container;
+        if (!root.loaded || !node || node.id === undefined)
+            return;
+        const id = String(node.id);
+        const known = windows.some(w => w.id === id);
+        if (event.change === "close") {
+            windows = windows.filter(w => w.id !== id);
+            if (focusedId === id)
+                focusedId = "";
+        } else if (event.change === "new" || event.change === "title" || event.change === "focus") {
+            windows = known ? windows.map(w => w.id === id ? entry(node) : w) : windows.concat([entry(node)]);
+            if (event.change === "focus")
+                focusedId = id;
+        } else {
+            return;
+        }
+        root.updated();
     }
 
     // Leaf windows, depth first, each level in Sway's focus order (a node's `focus` array lists
@@ -41,8 +84,14 @@ QtObject {
             collect(kids[i], out);
     }
 
-    // done([{ id, title, appId }], focusedId) or done(null) when Sway could not be read.
-    function refresh(done) {
+    // done([{ id, title, appId }], focusedId) or done(null) when Sway could not be read. Answers
+    // from the event-fed list, and only reads the tree with get_tree the first time and when the
+    // launcher asks (full), in case an event was missed.
+    function refresh(done, full) {
+        if (root.loaded && !full) {
+            done(windows.slice(), focusedId);
+            return;
+        }
         Proc.runCommand("pullWindow.sway.tree", [root.msg, "-t", "get_tree", "-r"], (stdout, exitCode) => {
             if (exitCode !== 0) {
                 done(null, "");
@@ -57,18 +106,14 @@ QtObject {
             }
             const nodes = [];
             collect(tree, nodes);
-            let focusedId = "";
-            const list = nodes.map(n => {
-                const appId = n.app_id || (n.window_properties && n.window_properties.class) || "";
-                if (n.focused)
-                    focusedId = String(n.id);
-                return {
-                    id: String(n.id),
-                    title: n.name || appId,
-                    appId: appId
-                };
-            });
-            done(list, focusedId);
+            // Sway reports no focused window while the launcher has the keyboard, so we keep the
+            // last one from the events then.
+            const focused = nodes.find(n => n.focused);
+            root.windows = nodes.map(n => entry(n));
+            if (focused)
+                root.focusedId = String(focused.id);
+            root.loaded = true;
+            done(root.windows.slice(), root.focusedId);
         }, 50, 5000);
     }
 
